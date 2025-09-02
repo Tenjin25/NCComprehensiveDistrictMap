@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NC Districts Enhanced - Preview</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet">
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            max-width: 300px;
+            z-index: 1000;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+        select {
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            padding: 5px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="info-panel">
+        <h3>🗺️ NC Districts Enhanced Preview</h3>
+        <p><strong>Status:</strong> <span id="status">Loading...</span></p>
+        <p><strong>Data Years:</strong> 2008-2024</p>
+        <p><strong>Features:</strong></p>
+        <ul>
+            <li>✅ Enhanced district boundaries</li>
+            <li>✅ Comprehensive election data integration</li>
+            <li>✅ Multi-year contest support</li>
+            <li>⏳ Interactive features (coming)</li>
+        </ul>
+    </div>
+    
+    <div class="controls">
+        <h4>District Type</h4>
+        <select id="districtType">
+            <option value="house">House Districts (120)</option>
+            <option value="senate">Senate Districts (50)</option>
+            <option value="congress">Congress Districts (14)</option>
+        </select>
+        <br>
+        <button onclick="loadDistricts()" style="background: #0066cc; color: white; border: none; padding: 8px 12px; border-radius: 3px; cursor: pointer; margin-top: 10px;">
+            Load Districts
+        </button>
+    </div>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <script>
+        // You'll need to add your Mapbox token here
+        mapboxgl.accessToken = 'pk.eyJ1Ijoic2hhbWFyZGF2aXMiLCJhIjoiY21kcW8yeDB2MDhvbTJzb29qeGp1aDZmZCJ9.Zw_i6U-dL7_bEKRHTUh7yg';
+        
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v10',
+            center: [-79.5, 35.5], // North Carolina center
+            zoom: 6.5
+        });
+
+        let currentLayer = null;
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function loadDistricts() {
+            const districtType = document.getElementById('districtType').value;
+            const fileName = `data/${districtType}_districts_comprehensive_analysis.geojson`;
+            
+            updateStatus(`Loading ${districtType} districts...`);
+            
+            // Remove existing layer
+            if (currentLayer && map.getLayer(currentLayer)) {
+                map.removeLayer(currentLayer);
+                map.removeSource(currentLayer);
+            }
+            
+            // Load the enhanced district file
+            fetch(fileName)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Could not load ${fileName}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Loaded district data:', data);
+                    
+                    // Add source and layer
+                    const sourceId = `${districtType}-districts`;
+                    currentLayer = sourceId;
+                    
+                    map.addSource(sourceId, {
+                        type: 'geojson',
+                        data: data
+                    });
+                    
+                    map.addLayer({
+                        id: sourceId,
+                        type: 'fill',
+                        source: sourceId,
+                        paint: {
+                            'fill-color': [
+                                'case',
+                                ['==', ['get', 'has_comprehensive_data'], true], '#4285f4',
+                                '#cccccc'
+                            ],
+                            'fill-opacity': 0.6,
+                            'fill-outline-color': '#ffffff'
+                        }
+                    });
+                    
+                    // Add click handler
+                    map.on('click', sourceId, (e) => {
+                        const properties = e.features[0].properties;
+                        
+                        new mapboxgl.Popup()
+                            .setLngLat(e.lngLat)
+                            .setHTML(`
+                                <div style="color: black;">
+                                    <h4>${districtType.toUpperCase()} District ${properties.DISTRICT}</h4>
+                                    <p><strong>Enhanced:</strong> ${properties.has_comprehensive_data ? '✅ Yes' : '❌ No'}</p>
+                                    <p><strong>Data Years:</strong> ${properties.data_years || 'N/A'}</p>
+                                    <p><strong>Last Enhanced:</strong> ${properties.last_enhanced || 'N/A'}</p>
+                                    <p><strong>Population:</strong> ${properties.PL20AA_TOT || 'N/A'}</p>
+                                </div>
+                            `)
+                            .addTo(map);
+                    });
+                    
+                    // Fit to bounds
+                    const bounds = new mapboxgl.LngLatBounds();
+                    data.features.forEach(feature => {
+                        if (feature.geometry.type === 'Polygon') {
+                            feature.geometry.coordinates[0].forEach(coord => {
+                                bounds.extend(coord);
+                            });
+                        }
+                    });
+                    map.fitBounds(bounds, { padding: 50 });
+                    
+                    updateStatus(`✅ Loaded ${data.features.length} ${districtType} districts`);
+                })
+                .catch(error => {
+                    console.error('Error loading districts:', error);
+                    updateStatus(`❌ Error: ${error.message}`);
+                });
+        }
+
+        // Load house districts by default when map loads
+        map.on('load', () => {
+            updateStatus('Ready - Click "Load Districts" to begin');
+        });
+    </script>
+</body>
+</html>

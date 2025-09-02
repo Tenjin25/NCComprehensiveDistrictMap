@@ -1,0 +1,44 @@
+{
+  "title": "NC Legislative Districts - Comprehensive Analysis (2008-2024)",
+  "description": "Enhanced district maps with multi-year election data",
+  "created": "2025-09-01",
+  "data_source": "North Carolina Statewide Precinct Election Results (2008-2024)",
+  "years_covered": [
+    "2008",
+    "2010",
+    "2012",
+    "2014",
+    "2016",
+    "2018",
+    "2022"
+  ],
+  "contest_categories": {
+    "presidential": {},
+    "governor": {},
+    "senate": {},
+    "attorney_general": {},
+    "treasurer": {},
+    "auditor": {},
+    "other": {}
+  },
+  "enhanced_files": [
+    "house_districts_comprehensive_analysis.geojson",
+    "senate_districts_comprehensive_analysis.geojson",
+    "congress_districts_comprehensive_analysis.geojson"
+  ],
+  "map_settings": {
+    "center": [
+      -79.5,
+      35.5
+    ],
+    "zoom": 6.5,
+    "style": "mapbox://styles/mapbox/dark-v11"
+  },
+  "features": [
+    "Multi-year contest selection",
+    "District-level aggregation",
+    "Competitive analysis",
+    "Interactive boundaries",
+    "Enhanced metadata"
+  ]
+}
